@@ -23,13 +23,13 @@ public class StudentController {
 
     // Login Student
     @PostMapping("/login")
-    public ResponseEntity<String> loginStudent(@RequestBody Student studentLogin) {
-        Student student = studentService.loginStudent(studentLogin.getEmail(), studentLogin.getPassword());
-
-        if (student != null) {
+    public ResponseEntity<?> loginStudent(@RequestBody Student studentLogin) {
+        try {
+            Student student = studentService.loginStudent(studentLogin.getEmail(), studentLogin.getPassword());
             return ResponseEntity.ok("Login Successful! Welcome " + student.getName());
-        } else {
-            return new ResponseEntity<>("Invalid Credentials", HttpStatus.UNAUTHORIZED);
+
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
     }
 
