@@ -6,5 +6,4 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface InstituteRepository extends JpaRepository<Institute, Long> {
-    // JpaRepository provides findAll() for fetching the list automatically.
 }

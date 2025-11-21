@@ -23,8 +23,7 @@ public class Student {
 
     private Timestamp createdAt;
 
-    // ✅ ADD THIS BLOCK
-    // This method runs automatically right before the data is saved to the DB
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = new Timestamp(System.currentTimeMillis());

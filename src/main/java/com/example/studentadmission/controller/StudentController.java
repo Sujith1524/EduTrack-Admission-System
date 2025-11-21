@@ -7,23 +7,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController // Marks this class as a REST API handler
-@RequestMapping("/students") // Base URL for all endpoints in this controller
+@RestController
+@RequestMapping("/students")
 public class StudentController {
 
     @Autowired
     private StudentService studentService;
 
-    // Endpoint for Task 3: Register Student
-    @PostMapping("/register") // POST request to /api/students/register
+    // Register Student
+    @PostMapping("/register")
     public ResponseEntity<Student> registerStudent(@RequestBody Student student) {
         Student newStudent = studentService.registerStudent(student);
-        // Returns the created student and HTTP status 201 (Created)
         return new ResponseEntity<>(newStudent, HttpStatus.CREATED);
     }
 
-    // Endpoint for Task 3: Login Student
-    @PostMapping("/login") // POST request to /api/students/login
+    // Login Student
+    @PostMapping("/login")
     public ResponseEntity<String> loginStudent(@RequestBody Student studentLogin) {
         Student student = studentService.loginStudent(studentLogin.getEmail(), studentLogin.getPassword());
 
@@ -34,8 +33,8 @@ public class StudentController {
         }
     }
 
-    // Endpoint for Task 3: Search Student Info
-    @GetMapping("/{id}") // GET request to /api/students/{id}
+    // Search Student Info
+    @GetMapping("/{id}")
     public ResponseEntity<Student> getStudent(@PathVariable("id") Long studentId) {
         Student student = studentService.getStudentDetails(studentId);
 

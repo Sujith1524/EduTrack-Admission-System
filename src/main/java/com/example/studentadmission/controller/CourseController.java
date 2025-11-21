@@ -15,8 +15,7 @@ public class CourseController {
     @Autowired
     private CourseService courseService;
 
-    // Task 3: Fetch Courses for Institute
-    // URL Example: http://localhost:8080/api/courses/institute/1
+    // Fetch Courses for Institute
     @GetMapping("/institute/{instituteId}")
     public ResponseEntity<List<Course>> getCoursesByInstitute(@PathVariable Long instituteId) {
         List<Course> courses = courseService.getCoursesByInstituteId(instituteId);

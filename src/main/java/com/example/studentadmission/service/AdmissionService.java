@@ -29,37 +29,31 @@ public class AdmissionService {
     @Autowired
     private InstituteRepository instituteRepository;
 
-    // Task: Take Admission (Logic to calculate dates)
+    // Take Admission
     public Admission takeAdmission(Admission admission) {
-        // 1. Fetch the FULL objects from the database using the IDs sent in the request
         Student student = studentRepository.findById(admission.getStudent().getStudentId()).orElse(null);
         Institute institute = instituteRepository.findById(admission.getInstitute().getInstituteId()).orElse(null);
         Course course = courseRepository.findById(admission.getCourse().getCourseId()).orElse(null);
 
-        // 2. Replace the "Empty" objects in 'admission' with the "Full" objects found in DB
-        // This ensures the response JSON has names, emails, etc., not just IDs.
-        if (student != null) admission.setStudent(student);
         if (institute != null) admission.setInstitute(institute);
 
         if (course != null) {
-            admission.setCourse(course); // Set the full course object
+            admission.setCourse(course);
 
-            // 3. Calculate Dates
             admission.setAdmissionDate(LocalDate.now());
             LocalDate endDate = LocalDate.now().plusDays(course.getDurationDays());
             admission.setCompletionDate(endDate);
         }
 
-        // 4. Save and Return
         return admissionRepository.save(admission);
     }
 
-    // Task: Count Students per Course
+    // Count Students per Course
     public long getStudentCountByCourse(Long courseId) {
         return admissionRepository.countByCourseCourseId(courseId);
     }
 
-    // Task: Duration Left for Course
+    // Duration Left for Course
     public String getDurationLeft(Long admissionId) {
         Admission admission = admissionRepository.findById(admissionId).orElse(null);
         if (admission == null) return "Admission not found";
@@ -70,7 +64,7 @@ public class AdmissionService {
         return daysLeft + " days remaining";
     }
 
-    // Task: Search Student Admission Details
+    // Search Student Admission Details
     public List<Admission> getAdmissionsByStudent(Long studentId) {
         return admissionRepository.findByStudentStudentId(studentId);
     }

@@ -10,26 +10,20 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/institutes") // Base URL: http://localhost:8080/api/institutes
+@RequestMapping("/institutes")
 public class InstituteController {
 
     @Autowired
     private InstituteService instituteService;
 
-    /**
-     * Endpoint for Task 3: Fetch Institute List
-     * Handles GET request to retrieve all institutes.
-     * @return A list of institutes with HTTP status 200 OK.
-     */
-    @GetMapping // Maps to /api/institutes
+    // Fetch Institute List
+    @GetMapping
     public ResponseEntity<List<Institute>> fetchInstituteList() {
         List<Institute> institutes = instituteService.getAllInstitutes();
 
         if (institutes.isEmpty()) {
-            // Return 204 No Content if the list is empty
             return ResponseEntity.noContent().build();
         }
-        // Return 200 OK with the list of institutes
         return ResponseEntity.ok(institutes);
     }
 }

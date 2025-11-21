@@ -8,7 +8,6 @@ import java.util.List;
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
 
-    // Custom Method: Find courses where the associated Institute's ID matches the parameter
-    // Naming convention: findBy + EntityName + FieldName
+    // Find courses where the associated Institute's ID matches
     List<Course> findByInstituteInstituteId(Long instituteId);
 }

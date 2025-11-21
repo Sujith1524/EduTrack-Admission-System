@@ -8,10 +8,9 @@ import java.util.List;
 @Repository
 public interface AdmissionRepository extends JpaRepository<Admission, Long> {
 
-    // Task: Count Students for a Course
-    // SQL equivalent: SELECT COUNT(*) FROM admission WHERE course_id = ?
+    // Count Students for a Course
     long countByCourseCourseId(Long courseId);
 
-    // Task: Search Student Info (Find admission details by Student ID)
+    // Search Student Info (Find admission details by Student ID)
     List<Admission> findByStudentStudentId(Long studentId);
 }

@@ -2,7 +2,7 @@ package com.example.studentadmission.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
-import java.time.LocalDate; // Use LocalDate for dates without time
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "admission")

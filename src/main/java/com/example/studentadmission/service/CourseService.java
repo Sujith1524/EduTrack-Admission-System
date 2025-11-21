@@ -12,12 +12,12 @@ public class CourseService {
     @Autowired
     private CourseRepository courseRepository;
 
-    // Task 3: Fetch Courses for specific Institute
+    // Fetch Courses for specific Institute
     public List<Course> getCoursesByInstituteId(Long instituteId) {
         return courseRepository.findByInstituteInstituteId(instituteId);
     }
 
-    // Optional: Add a course (Helper for testing)
+    // Add a course
     public Course addCourse(Course course) {
         return courseRepository.save(course);
     }

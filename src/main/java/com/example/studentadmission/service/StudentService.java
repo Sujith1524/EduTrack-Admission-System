@@ -1,6 +1,5 @@
 package com.example.studentadmission.service;
 
-
 import com.example.studentadmission.entity.Student;
 import com.example.studentadmission.repository.StudentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,27 +8,27 @@ import org.springframework.stereotype.Service;
 @Service
 public class StudentService {
 
-    @Autowired // Inject the repository
+    @Autowired
     private StudentRepository studentRepository;
 
-    // Task 3: Register Student (CREATE operation)
+    // Register Student
     public Student registerStudent(Student student) {
-        // Here you would add password hashing logic (e.g., using BCrypt)
         return studentRepository.save(student);
     }
 
-    // Task 3: Login Student (READ operation)
+    // Login Student
     public Student loginStudent(String email, String password) {
         Student student = studentRepository.findByEmail(email);
 
-        // Simple, insecure check - use password hashing in a real app!
+        // Check if student exists and password matches
         if (student != null && student.getPassword().equals(password)) {
             return student;
         }
-        return null; // Login failed
+
+        throw new RuntimeException("Login Failed: Invalid Email or Password");
     }
 
-    // Task 3: Search Student Info (READ by ID)
+    // Search Student Info
     public Student getStudentDetails(Long studentId) {
         return studentRepository.findById(studentId).orElse(null);
     }
