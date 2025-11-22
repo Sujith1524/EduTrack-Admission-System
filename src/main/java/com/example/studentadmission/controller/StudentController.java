@@ -16,20 +16,20 @@ public class StudentController {
 
     // Register Student
     @PostMapping("/register")
-    public ResponseEntity<Student> registerStudent(@RequestBody Student student) {
-        Student newStudent = studentService.registerStudent(student);
-        return new ResponseEntity<>(newStudent, HttpStatus.CREATED);
+    public Student registerStudent(@RequestBody Student student) {
+        return studentService.registerStudent(student);
+
     }
 
     // Login Student
     @PostMapping("/login")
-    public ResponseEntity<?> loginStudent(@RequestBody Student studentLogin) {
+    public ResponseEntity<String> loginStudent(@RequestBody Student studentLogin) {
         try {
             Student student = studentService.loginStudent(studentLogin.getEmail(), studentLogin.getPassword());
             return ResponseEntity.ok("Login Successful! Welcome " + student.getName());
 
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 

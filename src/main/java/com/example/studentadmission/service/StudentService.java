@@ -13,6 +13,7 @@ public class StudentService {
 
     // Register Student
     public Student registerStudent(Student student) {
+
         return studentRepository.save(student);
     }
 
