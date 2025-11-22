@@ -18,7 +18,7 @@ public class CourseService {
     }
 
     // Add a course
-    public Course addCourse(Course course) {
-        return courseRepository.save(course);
-    }
+//    public Course addCourse(Course course) {
+//        return courseRepository.save(course);
+//    }
 }
