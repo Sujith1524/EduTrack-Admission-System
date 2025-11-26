@@ -22,7 +22,7 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
-    // --- 1. REGISTER ---
+    // --- 1. REGISTER (Unchanged logic) ---
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> registerStudent(@Valid @RequestBody Student student, BindingResult result) {
         Map<String, Object> response = new LinkedHashMap<>();
@@ -43,7 +43,7 @@ public class StudentController {
             Student newStudent = studentService.registerStudent(student);
             response.put("message", "Registration successful! Please login.");
             response.put("status", "Success");
-            newStudent.setPassword(null); // Hide password
+            newStudent.setPassword(null);
             response.put("data", newStudent);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (Exception e) {
@@ -53,7 +53,7 @@ public class StudentController {
         }
     }
 
-    // --- 2. LOGIN (Generates Token) ---
+    // --- 2. LOGIN (Generates Access and Refresh Tokens) ---
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> loginStudent(@RequestBody Student studentLogin) {
         Map<String, Object> response = new LinkedHashMap<>();
@@ -62,11 +62,13 @@ public class StudentController {
         try {
             Student student = studentService.loginStudent(studentLogin.getEmail(), studentLogin.getPassword());
 
-            // Generate the secure token
-            String token = TokenUtility.generateToken(student);
+            // Generate Access Token (10 mins) and Refresh Token (7 days)
+            String accessToken = TokenUtility.generateAccessToken(student);
+            String refreshToken = TokenUtility.generateRefreshToken(student);
 
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("accessToken", token);
+            data.put("accessToken", accessToken);
+            data.put("refreshToken", refreshToken); // New
             student.setPassword(null);
             data.put("studentDetails", student);
 
@@ -83,10 +85,71 @@ public class StudentController {
         }
     }
 
-    // Public endpoint to view student profile (Or you can add this to FilterConfig to protect it)
+    // --- 3. TOKEN REFRESH ENDPOINT ---
+    @PostMapping("/refresh")
+    public ResponseEntity<Map<String, Object>> refreshToken(@RequestBody Map<String, String> requestBody) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("package", this.getClass().getPackageName());
+        String refreshToken = requestBody.get("refreshToken");
+
+        if (refreshToken == null || !TokenUtility.validateToken(refreshToken)) {
+            response.put("message", "Invalid Refresh Token.");
+            response.put("status", "Error");
+            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        }
+
+        if (TokenUtility.isTokenExpired(refreshToken)) {
+            response.put("message", "Refresh Token Expired. Please log in again.");
+            response.put("status", "Error");
+            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        }
+
+        try {
+            // Get student ID from claims
+            Map<String, Object> claims = TokenUtility.getClaims(refreshToken);
+            Long studentId = (Long) claims.get("id");
+
+            Student student = studentService.getStudentDetails(studentId);
+            if (student == null) {
+                throw new RuntimeException("Student not found.");
+            }
+
+            // Generate a brand new access token
+            String newAccessToken = TokenUtility.generateAccessToken(student);
+
+            response.put("message", "Access Token Refreshed Successfully");
+            response.put("status", "Success");
+            response.put("data", Map.of("accessToken", newAccessToken));
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            response.put("message", "Token refresh failed: " + e.getMessage());
+            response.put("status", "Error");
+            return new ResponseEntity<>(response, HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    // --- 4. GET STUDENT PROFILE (Secured) ---
+    // This is a test endpoint to verify the token/role logic
     @GetMapping("/{id}")
-    public ResponseEntity<Student> getStudent(@PathVariable("id") Long studentId) {
+    public ResponseEntity<Map<String, Object>> getStudentProfile(@PathVariable("id") Long studentId) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("package", this.getClass().getPackageName());
+
         Student student = studentService.getStudentDetails(studentId);
-        return student != null ? ResponseEntity.ok(student) : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+
+        if (student == null) {
+            response.put("message", "Student not found");
+            response.put("status", "Error");
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
+
+        student.setPassword(null);
+        response.put("message", "Student details fetched successfully");
+        response.put("status", "Success");
+        response.put("data", student);
+
+        return ResponseEntity.ok(response);
     }
 }

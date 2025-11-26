@@ -46,4 +46,17 @@ public class InstituteService {
             return null;
         }
     }
+
+    // --- NEW METHOD: DELETE INSTITUTE ---
+    public Institute deleteInstitute(Long instituteId) {
+        // 1. Fetch the institute object first
+        Institute instituteToDelete = instituteRepository.findById(instituteId)
+                .orElseThrow(() -> new RuntimeException("Institute not found with id: " + instituteId));
+
+        // 2. Perform the deletion
+        instituteRepository.deleteById(instituteId);
+
+        // 3. Return the object that was just deleted
+        return instituteToDelete;
+    }
 }

@@ -81,7 +81,7 @@ public class CourseController {
         }
     }
 
-    // --- 2. UPDATE COURSE (Structured - FIX APPLIED HERE) ---
+    // --- 2. UPDATE COURSE with course ID
     @PutMapping("/update/{id}")
     public ResponseEntity<Map<String, Object>> updateCourse(@PathVariable Long id, @RequestBody Course courseDetails) {
 
@@ -145,5 +145,26 @@ public class CourseController {
         response.put("data", data);
 
         return ResponseEntity.ok(response);
+    }
+    // DELETE COURSE
+    @DeleteMapping("delete/{id}")
+    public ResponseEntity<Map<String, Object>> deleteCourse(@PathVariable("id") Long courseId) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("package", this.getClass().getPackageName());
+
+        try {
+            // Retrieve the deleted object
+            Course deletedCourse = courseService.deleteCourse(courseId);
+
+            response.put("message", "Course deleted successfully");
+            response.put("status", "Success");
+            response.put("data", deletedCourse); // Include the deleted object here
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            response.put("message", e.getMessage());
+            response.put("status", "Error");
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
     }
 }

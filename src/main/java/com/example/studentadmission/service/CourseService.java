@@ -77,4 +77,20 @@ public class CourseService {
             return null;
         }
     }
+
+    //  DELETE COURSE
+    public Course deleteCourse(Long courseId) {
+        // 1. Fetch the course object first
+        Course courseToDelete = courseRepository.findById(courseId)
+                .orElseThrow(() -> new RuntimeException("Course not found with id: " + courseId));
+
+        // 2. Perform the deletion
+        courseRepository.deleteById(courseId);
+
+        // 3. IMPORTANT: Set unwanted fields to null so they are not serialized in the JSON response.
+        courseToDelete.setInstitute(null);
+
+        // 4. Return the object that was just deleted (containing only ID, Name, and Duration)
+        return courseToDelete;
+    }
 }

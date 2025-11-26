@@ -81,6 +81,7 @@ public class InstituteController {
         }
     }
 
+    //Getting All Institutes
     @GetMapping
     public ResponseEntity<Map<String, Object>> getAllInstitutes() {
 
@@ -109,5 +110,26 @@ public class InstituteController {
         }
 
         return ResponseEntity.ok(response);
+    }
+    // DELETE INSTITUTE
+    @DeleteMapping("delete/{id}")
+    public ResponseEntity<Map<String, Object>> deleteInstitute(@PathVariable("id") Long instituteId) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("package", this.getClass().getPackageName());
+
+        try {
+            // Retrieve the deleted object
+            Institute deletedInstitute = instituteService.deleteInstitute(instituteId);
+
+            response.put("message", "Institute deleted successfully");
+            response.put("status", "Success");
+            response.put("data", deletedInstitute); // Include the deleted object here
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            response.put("message", e.getMessage());
+            response.put("status", "Error");
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
     }
 }
