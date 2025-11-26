@@ -1,50 +1,67 @@
 package com.example.studentadmission.controller;
 
 import com.example.studentadmission.entity.Admission;
+import com.example.studentadmission.entity.Student;
 import com.example.studentadmission.service.AdmissionService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/admissions")
+@RequestMapping("/admissions")
 public class AdmissionController {
 
     @Autowired
     private AdmissionService admissionService;
 
-    // 1. Take Admission (With Validations)
+    // 1. Take Admission (Structured Response)
     @PostMapping("/take")
-    public ResponseEntity<Map<String, Object>> takeAdmission(@Valid @RequestBody Admission admission, BindingResult result) {
+    public ResponseEntity<Map<String, Object>> takeAdmission(@RequestBody Admission admission) {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("package", this.getClass().getPackageName());
 
-        // 1. Validation Check (Ensures Student, Course, Institute IDs are provided)
-        if (result.hasErrors()) {
-            Map<String, String> fieldErrors = new HashMap<>();
-            for (FieldError error : result.getFieldErrors()) {
-                fieldErrors.put(error.getField(), error.getDefaultMessage());
-            }
-            response.put("message", "Validation Failed: Missing Required IDs");
-            response.put("status", "Error");
-            response.put("errors", fieldErrors);
-            return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-        }
-
         try {
             Admission newAdmission = admissionService.takeAdmission(admission);
+
             response.put("message", "Admission taken successfully");
             response.put("status", "Success");
-            response.put("data", newAdmission);
+
+            // --- Custom Data Structure Construction ---
+            Map<String, Object> data = new LinkedHashMap<>();
+
+            // 1. Student Details (First, as requested)
+            // Clone student to safely remove password without affecting DB object reference
+            Student student = newAdmission.getStudent();
+            Map<String, Object> studentMap = new LinkedHashMap<>();
+            studentMap.put("studentId", student.getStudentId());
+            studentMap.put("name", student.getName());
+            studentMap.put("email", student.getEmail());
+            studentMap.put("phone", student.getPhone());
+            studentMap.put("createdAt", student.getCreatedAt());
+            data.put("studentDetails", studentMap);
+
+            // 2. Institute Details (Second)
+            data.put("instituteDetails", newAdmission.getInstitute());
+
+            // 3. Course Details (Third - Cleaned up to remove nested Institute)
+            Map<String, Object> courseMap = new LinkedHashMap<>();
+            courseMap.put("courseId", newAdmission.getCourse().getCourseId());
+            courseMap.put("courseName", newAdmission.getCourse().getCourseName());
+            courseMap.put("durationDays", newAdmission.getCourse().getDurationDays());
+            data.put("courseDetails", courseMap);
+
+            // 4. Admission Specifics (Last)
+            data.put("admissionId", newAdmission.getAdmissionId());
+            data.put("admissionDate", newAdmission.getAdmissionDate());
+            data.put("completionDate", newAdmission.getCompletionDate());
+
+            response.put("data", data);
+
             return new ResponseEntity<>(response, HttpStatus.CREATED);
         } catch (RuntimeException e) {
             response.put("message", e.getMessage());
@@ -53,9 +70,8 @@ public class AdmissionController {
         }
     }
 
-    // (Keep other methods countStudents, checkDuration, getStudentAdmissions the same...)
-    // ...
-    // 2. Count Students
+    // ... (Keep other methods: countStudents, checkDuration, getStudentAdmissions) ...
+
     @GetMapping("/count/{courseId}")
     public ResponseEntity<Map<String, Object>> countStudents(@PathVariable Long courseId) {
         Map<String, Object> response = new LinkedHashMap<>();
@@ -67,7 +83,6 @@ public class AdmissionController {
         return ResponseEntity.ok(response);
     }
 
-    // 3. Check Duration
     @GetMapping("/duration-left/{admissionId}")
     public ResponseEntity<Map<String, Object>> checkDuration(@PathVariable Long admissionId) {
         Map<String, Object> response = new LinkedHashMap<>();
@@ -76,10 +91,14 @@ public class AdmissionController {
         response.put("message", "Duration check successful");
         response.put("status", "Success");
         response.put("data", Map.of("admissionId", admissionId, "durationStatus", duration));
+        if (duration.equals("Admission not found")) {
+            response.put("message", duration);
+            response.put("status", "Error");
+            return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+        }
         return ResponseEntity.ok(response);
     }
 
-    // 4. Search Student Info
     @GetMapping("/student/{studentId}")
     public ResponseEntity<Map<String, Object>> getStudentAdmissions(@PathVariable Long studentId) {
         Map<String, Object> response = new LinkedHashMap<>();

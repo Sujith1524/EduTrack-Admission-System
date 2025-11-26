@@ -29,31 +29,40 @@ public class AdmissionService {
     @Autowired
     private InstituteRepository instituteRepository;
 
-    // Take Admission
     public Admission takeAdmission(Admission admission) {
-        Student student = studentRepository.findById(admission.getStudent().getStudentId()).orElse(null);
-        Institute institute = instituteRepository.findById(admission.getInstitute().getInstituteId()).orElse(null);
-        Course course = courseRepository.findById(admission.getCourse().getCourseId()).orElse(null);
+        // 1. Fetch the FULL objects from the database to avoid Null values in response
+        Student student = studentRepository.findById(admission.getStudent().getStudentId())
+                .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        if (institute != null) admission.setInstitute(institute);
+        Institute institute = instituteRepository.findById(admission.getInstitute().getInstituteId())
+                .orElseThrow(() -> new RuntimeException("Institute not found"));
 
-        if (course != null) {
-            admission.setCourse(course);
+        Course course = courseRepository.findById(admission.getCourse().getCourseId())
+                .orElseThrow(() -> new RuntimeException("Course not found"));
 
-            admission.setAdmissionDate(LocalDate.now());
-            LocalDate endDate = LocalDate.now().plusDays(course.getDurationDays());
-            admission.setCompletionDate(endDate);
+        // 2. VALIDATION: Check if the Course actually belongs to the selected Institute
+        // This prevents the error where Course 1 (Institute A) is assigned to Institute B
+        if (!course.getInstitute().getInstituteId().equals(institute.getInstituteId())) {
+            throw new RuntimeException("Course '" + course.getCourseName() + "' is not offered by " + institute.getInstituteName());
         }
+
+        // 3. Set the Full Objects into the Admission entity
+        admission.setStudent(student);
+        admission.setInstitute(institute);
+        admission.setCourse(course);
+
+        // 4. Calculate Dates
+        admission.setAdmissionDate(LocalDate.now());
+        LocalDate endDate = LocalDate.now().plusDays(course.getDurationDays());
+        admission.setCompletionDate(endDate);
 
         return admissionRepository.save(admission);
     }
 
-    // Count Students per Course
     public long getStudentCountByCourse(Long courseId) {
         return admissionRepository.countByCourseCourseId(courseId);
     }
 
-    // Duration Left for Course
     public String getDurationLeft(Long admissionId) {
         Admission admission = admissionRepository.findById(admissionId).orElse(null);
         if (admission == null) return "Admission not found";
@@ -64,7 +73,6 @@ public class AdmissionService {
         return daysLeft + " days remaining";
     }
 
-    // Search Student Admission Details
     public List<Admission> getAdmissionsByStudent(Long studentId) {
         return admissionRepository.findByStudentStudentId(studentId);
     }
