@@ -19,7 +19,8 @@ public class InstituteService {
     }
 
     public Institute getInstituteDetailsById(Long instituteId) {
-        return instituteRepository.findById(instituteId).orElse(null);
+        return instituteRepository.findById(instituteId)
+                .orElseThrow(() -> new RuntimeException("Institute with ID " + instituteId + " not found."));
     }
 
     public Institute addInstitute(Institute institute) {
@@ -27,36 +28,19 @@ public class InstituteService {
     }
 
     public Institute updateInstitute(Long id, Institute instituteDetails) {
-        Optional<Institute> instituteOptional = instituteRepository.findById(id);
+        Institute existingInstitute = instituteRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Institute with ID " + id + " not found"));
 
-        if (instituteOptional.isPresent()) {
-            Institute existingInstitute = instituteOptional.get();
+        if (instituteDetails.getInstituteName() != null) existingInstitute.setInstituteName(instituteDetails.getInstituteName());
+        if (instituteDetails.getAddress() != null) existingInstitute.setAddress(instituteDetails.getAddress());
+        if (instituteDetails.getContactNo() != null) existingInstitute.setContactNo(instituteDetails.getContactNo());
 
-            if (instituteDetails.getInstituteName() != null)
-                existingInstitute.setInstituteName(instituteDetails.getInstituteName());
-
-            if (instituteDetails.getAddress() != null)
-                existingInstitute.setAddress(instituteDetails.getAddress());
-
-            if (instituteDetails.getContactNo() != null)
-                existingInstitute.setContactNo(instituteDetails.getContactNo());
-
-            return instituteRepository.save(existingInstitute);
-        } else {
-            return null;
-        }
+        return instituteRepository.save(existingInstitute);
     }
 
-    // --- NEW METHOD: DELETE INSTITUTE ---
     public Institute deleteInstitute(Long instituteId) {
-        // 1. Fetch the institute object first
-        Institute instituteToDelete = instituteRepository.findById(instituteId)
-                .orElseThrow(() -> new RuntimeException("Institute not found with id: " + instituteId));
-
-        // 2. Perform the deletion
-        instituteRepository.deleteById(instituteId);
-
-        // 3. Return the object that was just deleted
+        Institute instituteToDelete = getInstituteDetailsById(instituteId);
+        instituteRepository.delete(instituteToDelete);
         return instituteToDelete;
     }
 }

@@ -7,8 +7,10 @@ import com.example.studentadmission.repository.CourseRepository;
 import com.example.studentadmission.repository.InstituteRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +22,7 @@ public class CourseService {
     @Autowired
     private InstituteRepository instituteRepository;
 
+    // Helper: Convert Entity to DTO
     private CourseResponseDTO convertToDto(Course course) {
         CourseResponseDTO dto = new CourseResponseDTO();
         dto.setCourseId(course.getCourseId());
@@ -28,69 +31,59 @@ public class CourseService {
         return dto;
     }
 
-    public List<CourseResponseDTO> getCoursesByInstituteId(Long instituteId) {
-        List<Course> courses = courseRepository.findByInstituteInstituteId(instituteId);
+    public Map<String, Object> getCoursesByInstituteId(Long instituteId) {
+        Institute institute = instituteRepository.findById(instituteId)
+                .orElseThrow(() -> new RuntimeException("Institute with ID " + instituteId + " not found."));
 
-        return courses.stream()
+        List<CourseResponseDTO> courses = courseRepository.findByInstituteInstituteId(instituteId).stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
+
+        Map<String, Object> instituteHeader = new LinkedHashMap<>();
+        instituteHeader.put("instituteId", institute.getInstituteId());
+        instituteHeader.put("instituteName", institute.getInstituteName());
+        instituteHeader.put("address", institute.getAddress());
+        instituteHeader.put("contactNo", institute.getContactNo());
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("instituteDetails", instituteHeader);
+        result.put("courses", courses);
+        return result;
     }
 
-    public Course addCourse(Course course) {
+    public CourseResponseDTO addCourse(Course course) {
         if (course.getInstitute() == null || course.getInstitute().getInstituteId() == null) {
             throw new RuntimeException("Institute ID is missing.");
         }
+        Institute institute = instituteRepository.findById(course.getInstitute().getInstituteId())
+                .orElseThrow(() -> new RuntimeException("Institute with ID " + course.getInstitute().getInstituteId() + " not found."));
 
-        Optional<Institute> institute = instituteRepository.findById(course.getInstitute().getInstituteId());
-
-        if (institute.isEmpty()) {
-            throw new RuntimeException("Institute with ID " + course.getInstitute().getInstituteId() + " not found.");
-        }
-
-        course.setInstitute(institute.get());
-
-        return courseRepository.save(course);
+        course.setInstitute(institute);
+        Course savedCourse = courseRepository.save(course);
+        return convertToDto(savedCourse);
     }
 
-    public Course updateCourse(Long id, Course courseDetails) {
-        Optional<Course> courseOptional = courseRepository.findById(id);
+    public CourseResponseDTO updateCourse(Long id, Course courseDetails) {
+        Course existingCourse = courseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Course with ID " + id + " not found"));
 
-        if (courseOptional.isPresent()) {
-            Course existingCourse = courseOptional.get();
+        if (courseDetails.getCourseName() != null) existingCourse.setCourseName(courseDetails.getCourseName());
+        if (courseDetails.getDurationDays() != null) existingCourse.setDurationDays(courseDetails.getDurationDays());
 
-            if (courseDetails.getCourseName() != null)
-                existingCourse.setCourseName(courseDetails.getCourseName());
-
-            if (courseDetails.getDurationDays() != null)
-                existingCourse.setDurationDays(courseDetails.getDurationDays());
-
-            if (courseDetails.getInstitute() != null && courseDetails.getInstitute().getInstituteId() != null) {
-                Optional<Institute> newInstitute = instituteRepository.findById(courseDetails.getInstitute().getInstituteId());
-                if (newInstitute.isEmpty()) {
-                    throw new RuntimeException("Cannot update course: Institute ID " + courseDetails.getInstitute().getInstituteId() + " not found.");
-                }
-                existingCourse.setInstitute(newInstitute.get());
-            }
-
-            return courseRepository.save(existingCourse);
-        } else {
-            return null;
+        if (courseDetails.getInstitute() != null && courseDetails.getInstitute().getInstituteId() != null) {
+            Institute newInstitute = instituteRepository.findById(courseDetails.getInstitute().getInstituteId())
+                    .orElseThrow(() -> new RuntimeException("Cannot update: Institute ID not found."));
+            existingCourse.setInstitute(newInstitute);
         }
+
+        return convertToDto(courseRepository.save(existingCourse));
     }
 
-    //  DELETE COURSE
     public Course deleteCourse(Long courseId) {
-        // 1. Fetch the course object first
         Course courseToDelete = courseRepository.findById(courseId)
                 .orElseThrow(() -> new RuntimeException("Course not found with id: " + courseId));
-
-        // 2. Perform the deletion
         courseRepository.deleteById(courseId);
-
-        // 3. IMPORTANT: Set unwanted fields to null so they are not serialized in the JSON response.
-        courseToDelete.setInstitute(null);
-
-        // 4. Return the object that was just deleted (containing only ID, Name, and Duration)
+        courseToDelete.setInstitute(null); // Avoid serialization issues
         return courseToDelete;
     }
 }
