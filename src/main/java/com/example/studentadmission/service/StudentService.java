@@ -1,5 +1,6 @@
 package com.example.studentadmission.service;
 
+import com.example.studentadmission.entity.Address;
 import com.example.studentadmission.entity.ClassInfo;
 import com.example.studentadmission.entity.Student;
 import com.example.studentadmission.repository.ClassInfoRepository;
@@ -8,10 +9,9 @@ import com.example.studentadmission.util.TokenUtility;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Transactional; // Import added
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -25,22 +25,51 @@ public class StudentService {
     @Autowired
     private ClassInfoRepository classInfoRepository;
 
+    /**
+     * FIX: Added @Transactional to ensure database operations succeed.
+     * FIX: Added required Address and ClassInfo fields for Super Admin to pass validation.
+     */
     @PostConstruct
+    @Transactional
     public void setupSuperAdmin() {
         if (studentRepository.findByRole(Student.Role.SUPER_ADMIN).isEmpty()) {
+
+            // 1. Create Dummy ClassInfo (Required)
+            ClassInfo adminClass = new ClassInfo();
+            adminClass.setClassId("ADMIN");
+            adminClass.setClassName("Administration");
+            adminClass.setSection("NA");
+            adminClass.setAcademicYear("2000-2001");
+            // The ClassInfo entity will be saved automatically via cascade,
+            // but we ensure we have the object ready.
+
+            // 2. Create Dummy Address (Required)
+            Address adminAddress = new Address();
+            adminAddress.setHouseName("System House");
+            adminAddress.setStreet("NA");
+            adminAddress.setPost("NA");
+            adminAddress.setCity("Headquarters");
+            adminAddress.setState("System");
+            adminAddress.setPinCode("000000");
+
+            // 3. Create Super Admin Student
             Student superAdmin = new Student();
             superAdmin.setFirstName("System");
-            superAdmin.setLastName("SuperAdmin");
+            superAdmin.setLastName("Admin"); // Added last name
             superAdmin.setEmail("admin@super.com");
             superAdmin.setPassword("SuperAdminPass123");
             superAdmin.setPhoneNumber("0000000000");
             superAdmin.setRole(Student.Role.SUPER_ADMIN);
-            superAdmin.setDateOfBirth(LocalDate.of(2000, 1, 1));
-            superAdmin.setGender(Student.Gender.Male);
-            // Note: Address and ClassInfo are required by entity validation,
-            // but for a system admin script, you might bypass or create dummies.
-            // Skipping detailed dummy creation here for brevity.
-            // In a real app, create a dummy Admin Address/Class.
+            superAdmin.setDateOfBirth(LocalDate.of(1980, 1, 1)); // Realistic DOB
+            superAdmin.setGender(Student.Gender.Other); // Set a default gender
+
+            // 4. Set required relationships
+            superAdmin.setAddress(adminAddress);
+            superAdmin.setClassInfo(adminClass);
+
+            // 5. Save
+            studentRepository.save(superAdmin);
+            System.out.println(">>> Super Admin account created successfully <<<");
         }
     }
 
@@ -51,19 +80,13 @@ public class StudentService {
             throw new RuntimeException("Email already registered.");
         }
 
-        // 2. Handle Class Info Logic
-        // If the Class ID exists in DB, use that record. If not, save the new one provided.
-        // This prevents duplicate rows for "Computer Science - Section A"
+        // 2. Handle Class Info Logic: Check if class exists, otherwise use/save the new one.
         String incomingClassId = student.getClassInfo().getClassId();
         Optional<ClassInfo> existingClass = classInfoRepository.findById(incomingClassId);
 
         if (existingClass.isPresent()) {
             student.setClassInfo(existingClass.get());
-        } else {
-            // The cascade configuration in Student entity will save this new ClassInfo
-            // automatically, but we can also explicit save if needed.
-            // Relying on CascadeType.PERSIST defined in Student.java
-        }
+        } // If not present, the new ClassInfo instance will be saved via CascadeType.PERSIST
 
         // 3. Save Student (Address saves automatically due to CascadeType.ALL)
         return studentRepository.save(student);
@@ -87,8 +110,6 @@ public class StudentService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("accessToken", accessToken);
         data.put("refreshToken", refreshToken);
-
-        // Structure the student object within "student" key if needed for login response too
         data.put("student", student);
 
         return data;
@@ -104,7 +125,8 @@ public class StudentService {
         }
 
         Map<String, Object> claims = TokenUtility.getClaims(refreshToken);
-        Long studentId = (Long) claims.get("id");
+        // Note: JWT claims store numbers as Integer/Double/Long, cast carefully
+        Long studentId = ((Number) claims.get("id")).longValue();
         Student student = getStudentDetails(studentId);
 
         String newAccessToken = TokenUtility.generateAccessToken(student);

@@ -1,6 +1,7 @@
 package com.example.studentadmission.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder; // Import added
 import jakarta.persistence.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -17,6 +18,11 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "student")
 @Data
+@JsonPropertyOrder({
+        "_class", "id", "firstName", "lastName", "email", "phoneNumber",
+        "dateOfBirth", "gender", "role", "status", "address", "classInfo",
+        "createdAt", "updatedAt"
+}) // FIX: Explicitly set the JSON field order
 public class Student {
 
     public enum Role {
@@ -33,7 +39,7 @@ public class Student {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id; // Changed from studentId to id to match your JSON requirement
+    private Long id;
 
     @NotBlank(message = "First Name is required")
     private String firstName;
@@ -47,7 +53,7 @@ public class Student {
     private String email;
 
     @NotBlank(message = "Password is required")
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // Never return password in JSON
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     @Pattern(regexp = "^\\d{10}$", message = "Phone number must be exactly 10 digits")
@@ -66,23 +72,17 @@ public class Student {
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
 
-    // --- Relationships ---
-
-    // One Student has One Address
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "address_id", referencedColumnName = "id")
-    @Valid // Triggers validation on the Address object
+    @Valid
     @NotNull(message = "Address details are required")
     private Address address;
 
-    // Many Students can belong to One Class (ClassInfo)
     @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinColumn(name = "class_info_id")
     @Valid
     @NotNull(message = "Class Info is required")
     private ClassInfo classInfo;
-
-    // --- Auditing Fields ---
 
     @CreationTimestamp
     @Column(updatable = false)
@@ -91,7 +91,7 @@ public class Student {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // --- Requirement: _class field ---
+    // Requirement: _class field (placed first via @JsonPropertyOrder)
     @JsonProperty("_class")
     public String get_class() {
         return this.getClass().getName();

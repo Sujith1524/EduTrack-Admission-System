@@ -2,91 +2,142 @@ package com.example.studentadmission.filter;
 
 import com.example.studentadmission.entity.Student;
 import com.example.studentadmission.util.TokenUtility;
-import jakarta.servlet.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-public class AuthenticationFilter implements Filter {
+public class AuthenticationFilter extends OncePerRequestFilter {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    // Paths that do not require authentication (allow access)
+    private static final String[] PUBLIC_PATHS = {
+            "/students/register",
+            "/students/login",
+            "/students/refresh"
+    };
+
+    // Paths that require ADMIN role (Institute, Course management)
+    private static final String[] ADMIN_PATHS = {
+            "/institutes/add",
+            "/institutes/update",
+            "/courses/add",
+            "/courses/update"
+    };
 
     @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-        HttpServletRequest httpRequest = (HttpServletRequest) request;
-        HttpServletResponse httpResponse = (HttpServletResponse) response;
-        String path = httpRequest.getRequestURI();
+        String path = request.getRequestURI();
 
-        // 1. PUBLIC ENDPOINTS (No token required)
-        if (path.startsWith("/students/login") ||
-                path.startsWith("/students/register") ||
-                path.startsWith("/students/refresh")) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        // 2. TOKEN EXTRACTION & PRESENCE CHECK
-        String authHeader = httpRequest.getHeader("Authorization");
-        String token = null;
-
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-        }
-
-        if (token == null) {
-            sendError(httpResponse, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized: Missing Token");
-            return;
-        }
-
-        // 3. CHECK TOKEN VALIDITY (Signature check)
-        if (!TokenUtility.validateToken(token)) {
-            sendError(httpResponse, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized: Invalid Token Signature");
-            return;
-        }
-
-        // 4. CHECK TOKEN EXPIRATION (Moved up to give priority to expiration error)
-        if (TokenUtility.isTokenExpired(token)) {
-            sendError(httpResponse, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized: Access Token Expired. Use Refresh Token to get a new one.");
-            return;
-        }
-
-        // 5. EXTRACT CLAIMS (Done after basic validation and expiration check)
-        Map<String, Object> claims = TokenUtility.getClaims(token);
-
-        // Ensure claims were successfully parsed
-        if (claims == null || claims.isEmpty()) {
-            sendError(httpResponse, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized: Token claims could not be read.");
-            return;
-        }
-
-        String tokenType = (String) claims.get("type");
-        Student.Role userRole = (Student.Role) claims.get("role");
-
-        // 6. CRITICAL FIX: CHECK TOKEN TYPE (Refresh tokens cannot access APIs)
-        if (!"access".equals(tokenType)) {
-            sendError(httpResponse, HttpServletResponse.SC_FORBIDDEN, "Forbidden: This token is a Refresh Token and cannot be used for direct API access.");
-            return;
-        }
-
-        // 7. ROLE-BASED ACCESS CONTROL (RBAC)
-        if (path.startsWith("/institutes") ||
-                path.startsWith("/courses") ||
-                (path.startsWith("/admissions") && !path.startsWith("/api/admissions/student"))) {
-
-            if (userRole != Student.Role.ADMIN && userRole != Student.Role.SUPER_ADMIN) {
-                sendError(httpResponse, HttpServletResponse.SC_FORBIDDEN, "Forbidden: Insufficient privileges (ADMIN or SUPER_ADMIN required).");
+        // --- 1. Handle Public Paths ---
+        for (String publicPath : PUBLIC_PATHS) {
+            if (path.startsWith(publicPath)) {
+                filterChain.doFilter(request, response);
                 return;
             }
         }
 
-        // 8. SUCCESS: Allow request to proceed
-        chain.doFilter(request, response);
+        // --- 2. Extract Token from Header ---
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            sendErrorResponse(response, "Authorization header missing or invalid.", HttpStatus.UNAUTHORIZED);
+            return;
+        }
+
+        String token = authHeader.substring(7);
+
+        // --- 3. Validate Token ---
+        if (!TokenUtility.validateToken(token)) {
+            sendErrorResponse(response, "Invalid or expired token.", HttpStatus.UNAUTHORIZED);
+            return;
+        }
+
+        try {
+            Claims claims = TokenUtility.extractAllClaims(token);
+
+            // Extract role (comes as String from JWT)
+            String roleString = claims.get("role", String.class);
+
+            // LINE 64 FIX: Convert String to Enum using valueOf()
+            Student.Role role = Student.Role.valueOf(roleString);
+
+            // Extract user ID (comes as Integer/Long, cast to Long)
+            Long studentId = ((Number) claims.get("id")).longValue();
+
+            // --- 4. Role-Based Authorization Check ---
+
+            // Check if the request is trying to access an Admin-only resource
+            if (isAdminPath(path)) {
+                if (role != Student.Role.ADMIN && role != Student.Role.SUPER_ADMIN) {
+                    sendErrorResponse(response, "Access Denied: Requires ADMIN privileges.", HttpStatus.FORBIDDEN);
+                    return;
+                }
+            }
+
+            // --- 5. Set Authentication Context ---
+
+            // Create the list of authorities (roles) for Spring Security
+            SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role.name());
+
+            // Create the authentication object
+            UsernamePasswordAuthenticationToken authentication =
+                    new UsernamePasswordAuthenticationToken(
+                            studentId, // Principal: The student's ID (or email/username)
+                            null,      // Credentials: null (already validated by token)
+                            Collections.singletonList(authority) // Authorities/Roles
+                    );
+
+            // Store the authenticated user in the security context
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        } catch (IllegalArgumentException e) {
+            // Catches errors if valueOf(roleString) fails (e.g., malformed role in token)
+            sendErrorResponse(response, "Invalid role contained in token.", HttpStatus.UNAUTHORIZED);
+            return;
+        } catch (Exception e) {
+            // Catch JWT extraction/parsing issues
+            sendErrorResponse(response, "Token processing failed: " + e.getMessage(), HttpStatus.UNAUTHORIZED);
+            return;
+        }
+
+        // Continue the filter chain
+        filterChain.doFilter(request, response);
     }
 
-    private void sendError(HttpServletResponse httpResponse, int status, String message) throws IOException {
-        httpResponse.setStatus(status);
-        httpResponse.setContentType("application/json");
-        httpResponse.getWriter().write(String.format("{\"status\": \"Error\", \"message\": \"%s\"}", message));
+    private boolean isAdminPath(String path) {
+        for (String adminPath : ADMIN_PATHS) {
+            if (path.startsWith(adminPath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void sendErrorResponse(HttpServletResponse response, String message, HttpStatus status) throws IOException {
+        response.setStatus(status.value());
+        response.setContentType("application/json");
+
+        Map<String, Object> errorDetails = new LinkedHashMap<>();
+        errorDetails.put("status", status.value());
+        errorDetails.put("error", status.getReasonPhrase());
+        errorDetails.put("message", message);
+        errorDetails.put("timestamp", new java.util.Date().toString());
+
+        response.getWriter().write(objectMapper.writeValueAsString(errorDetails));
     }
 }

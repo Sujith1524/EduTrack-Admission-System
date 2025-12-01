@@ -1,6 +1,7 @@
 package com.example.studentadmission.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder; // Import added
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -11,11 +12,14 @@ import lombok.NoArgsConstructor;
 @Table(name = "address")
 @Data
 @NoArgsConstructor
+@JsonPropertyOrder({
+        "_class", "houseName", "street", "post", "city", "state", "pinCode"
+}) // FIX: Explicitly set the JSON field order
 public class Address {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // Hide ID in response if you only want it internal
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private Long id;
 
     @NotBlank(message = "House Name is required")
@@ -37,7 +41,7 @@ public class Address {
     @Pattern(regexp = "^\\d{6}$", message = "Pin Code must be 6 digits")
     private String pinCode;
 
-    // --- Requirement: _class field ---
+    // Requirement: _class field (placed first via @JsonPropertyOrder)
     @JsonProperty("_class")
     public String get_class() {
         return this.getClass().getName();

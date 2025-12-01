@@ -1,6 +1,7 @@
 package com.example.studentadmission.entity;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder; // Import added
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -10,10 +11,11 @@ import lombok.NoArgsConstructor;
 @Table(name = "class_info")
 @Data
 @NoArgsConstructor
+@JsonPropertyOrder({
+        "_class", "classId", "className", "section", "academicYear"
+}) // FIX: Explicitly set the JSON field order
 public class ClassInfo {
 
-    // Usually, the Class ID (e.g., "C105") is provided by the system,
-    // but here we treat it as a unique identifier string.
     @Id
     @NotBlank(message = "Class ID is required")
     private String classId;
@@ -27,7 +29,7 @@ public class ClassInfo {
     @NotBlank(message = "Academic Year is required")
     private String academicYear;
 
-    // --- Requirement: _class field ---
+    // Requirement: _class field (placed first via @JsonPropertyOrder)
     @JsonProperty("_class")
     public String get_class() {
         return this.getClass().getName();
