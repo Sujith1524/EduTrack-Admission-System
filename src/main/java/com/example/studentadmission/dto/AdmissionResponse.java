@@ -1,55 +1,45 @@
 package com.example.studentadmission.dto;
 
 import com.example.studentadmission.entity.Admission;
-import com.example.studentadmission.entity.Course;
-import com.example.studentadmission.entity.Institute;
 import com.example.studentadmission.entity.Student;
 import lombok.Data;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 @Data
 public class AdmissionResponse {
 
     private Long admissionId;
+    private Long studentId;
+    private String studentName; // Assuming you want first name here
+    private String studentPhone;
+    private Long instituteId;
+    private String instituteName;
+    private Long courseId;
+    private String courseName;
     private LocalDate admissionDate;
     private LocalDate completionDate;
 
-    // Custom fields to hold simplified, ordered data
-    private Map<String, Object> studentDetails;
-    private Institute instituteDetails; // Institute can stay full for now, if desired
-    private Map<String, Object> courseDetails;
-
-    // Static factory method to convert the Admission Entity into a clean DTO
     public static AdmissionResponse fromEntity(Admission admission) {
         AdmissionResponse dto = new AdmissionResponse();
+        Student student = admission.getStudent();
 
         dto.setAdmissionId(admission.getAdmissionId());
+
+        // --- FIX: Using getId() instead of getStudentId() ---
+        dto.setStudentId(student.getId());
+
+        // --- FIX: Using getFirstName() and getPhoneNumber() ---
+        dto.setStudentName(student.getFirstName() + " " + student.getLastName());
+        dto.setStudentPhone(student.getPhoneNumber());
+
+        dto.setInstituteId(admission.getInstitute().getInstituteId());
+        dto.setInstituteName(admission.getInstitute().getInstituteName());
+
+        dto.setCourseId(admission.getCourse().getCourseId());
+        dto.setCourseName(admission.getCourse().getCourseName());
+
         dto.setAdmissionDate(admission.getAdmissionDate());
         dto.setCompletionDate(admission.getCompletionDate());
-
-        // --- 1. Student Details (Simplified and Password Removed) ---
-        Student student = admission.getStudent();
-        Map<String, Object> studentMap = new LinkedHashMap<>();
-        studentMap.put("studentId", student.getStudentId());
-        studentMap.put("name", student.getName());
-        studentMap.put("email", student.getEmail());
-        studentMap.put("phone", student.getPhone());
-        studentMap.put("createdAt", student.getCreatedAt());
-        dto.setStudentDetails(studentMap);
-
-        // --- 2. Institute Details (Full Institute) ---
-        dto.setInstituteDetails(admission.getInstitute());
-
-        // --- 3. Course Details (Simplified - ONLY ID, Name, Duration) ---
-        Course course = admission.getCourse();
-        Map<String, Object> courseMap = new LinkedHashMap<>();
-        courseMap.put("courseId", course.getCourseId());
-        courseMap.put("courseName", course.getCourseName());
-        courseMap.put("durationDays", course.getDurationDays());
-        // *** CRITICAL: We STOP here, preventing the nested Institute details ***
-        dto.setCourseDetails(courseMap);
 
         return dto;
     }

@@ -30,10 +30,13 @@ public class AdmissionService {
     private InstituteRepository instituteRepository;
 
     public AdmissionResponse takeAdmission(Admission admission) {
-        Student student = studentRepository.findById(admission.getStudent().getStudentId())
+        // Using getId() instead of getStudentId() as fixed in the previous step
+        Student student = studentRepository.findById(admission.getStudent().getId())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
+
         Institute institute = instituteRepository.findById(admission.getInstitute().getInstituteId())
                 .orElseThrow(() -> new RuntimeException("Institute not found"));
+
         Course course = courseRepository.findById(admission.getCourse().getCourseId())
                 .orElseThrow(() -> new RuntimeException("Course not found"));
 
@@ -52,7 +55,8 @@ public class AdmissionService {
     }
 
     public List<AdmissionResponse> getAdmissionsByStudent(Long studentId) {
-        List<Admission> admissions = admissionRepository.findByStudentStudentId(studentId);
+        // FIX: Calling the corrected repository method: findByStudent_Id
+        List<Admission> admissions = admissionRepository.findByStudent_Id(studentId);
         return admissions.stream()
                 .map(AdmissionResponse::fromEntity)
                 .collect(Collectors.toList());

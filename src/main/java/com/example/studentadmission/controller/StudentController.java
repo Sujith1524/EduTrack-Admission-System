@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.Map;
 
 @RestController
@@ -21,12 +22,19 @@ public class StudentController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> registerStudent(@Valid @RequestBody Student student) {
         Student newStudent = studentService.registerStudent(student);
-        return ResponseUtil.success(newStudent, "Registration successful! Please login.", HttpStatus.CREATED);
+
+        // Wrap data in "student" key to match requirement
+        Map<String, Object> dataWrapper = Collections.singletonMap("student", newStudent);
+
+        return ResponseUtil.success(dataWrapper, "Student registered successfully", HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> loginStudent(@RequestBody Student studentLogin) {
-        Map<String, Object> loginData = studentService.loginStudent(studentLogin.getEmail(), studentLogin.getPassword());
+    public ResponseEntity<Map<String, Object>> loginStudent(@RequestBody Map<String, String> loginRequest) {
+        String email = loginRequest.get("email");
+        String password = loginRequest.get("password");
+
+        Map<String, Object> loginData = studentService.loginStudent(email, password);
         return ResponseUtil.success(loginData, "Login Successful", HttpStatus.OK);
     }
 
@@ -39,6 +47,10 @@ public class StudentController {
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getStudentProfile(@PathVariable("id") Long studentId) {
         Student student = studentService.getStudentDetails(studentId);
-        return ResponseUtil.success(student, "Student details fetched successfully", HttpStatus.OK);
+
+        // Wrap data in "student" key to match requirement
+        Map<String, Object> dataWrapper = Collections.singletonMap("student", student);
+
+        return ResponseUtil.success(dataWrapper, "Student details fetched successfully", HttpStatus.OK);
     }
 }

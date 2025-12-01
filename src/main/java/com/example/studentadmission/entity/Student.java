@@ -1,10 +1,17 @@
 package com.example.studentadmission.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -16,12 +23,23 @@ public class Student {
         STUDENT, ADMIN, SUPER_ADMIN
     }
 
+    public enum Gender {
+        Male, Female, Other
+    }
+
+    public enum Status {
+        ACTIVE, INACTIVE
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long studentId;
+    private Long id; // Changed from studentId to id to match your JSON requirement
 
-    @NotBlank(message = "Name is required")
-    private String name;
+    @NotBlank(message = "First Name is required")
+    private String firstName;
+
+    @NotBlank(message = "Last Name is required")
+    private String lastName;
 
     @Email(message = "Email must be valid")
     @NotBlank(message = "Email is required")
@@ -29,13 +47,53 @@ public class Student {
     private String email;
 
     @NotBlank(message = "Password is required")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // Never return password in JSON
     private String password;
 
     @Pattern(regexp = "^\\d{10}$", message = "Phone number must be exactly 10 digits")
-    private String phone;
+    private String phoneNumber;
+
+    @NotNull(message = "Date of Birth is required")
+    private LocalDate dateOfBirth;
+
+    @NotNull(message = "Gender is required")
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
 
     @Enumerated(EnumType.STRING)
     private Role role = Role.STUDENT;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Enumerated(EnumType.STRING)
+    private Status status = Status.ACTIVE;
+
+    // --- Relationships ---
+
+    // One Student has One Address
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "address_id", referencedColumnName = "id")
+    @Valid // Triggers validation on the Address object
+    @NotNull(message = "Address details are required")
+    private Address address;
+
+    // Many Students can belong to One Class (ClassInfo)
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "class_info_id")
+    @Valid
+    @NotNull(message = "Class Info is required")
+    private ClassInfo classInfo;
+
+    // --- Auditing Fields ---
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
+
+    // --- Requirement: _class field ---
+    @JsonProperty("_class")
+    public String get_class() {
+        return this.getClass().getName();
+    }
 }
