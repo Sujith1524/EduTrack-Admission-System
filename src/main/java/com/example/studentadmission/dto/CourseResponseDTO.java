@@ -1,13 +1,31 @@
 package com.example.studentadmission.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-// This DTO defines the exact structure we want in the JSON response for a Course list.
 @Data
-@NoArgsConstructor
+@JsonPropertyOrder({
+        "_class", "courseId", "courseName", "instituteId", "instituteName",
+        "durationDays", "fees", "createdAt", "updatedAt"
+})
 public class CourseResponseDTO {
+
+    // FIX: This field will now hold the Entity's class name, copied from the Entity in the controller.
+    @JsonProperty("_class")
+    private String _class;
+
     private Long courseId;
     private String courseName;
-    private Integer durationDays;
+
+    // Institute details pulled up to the DTO level (Requires setInstituteId and setInstituteName)
+    private Long instituteId;
+    private String instituteName;
+
+    private int durationDays;
+    private BigDecimal fees;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
