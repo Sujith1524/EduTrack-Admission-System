@@ -8,9 +8,6 @@ import java.util.List;
 
 @Repository
 public interface AdmissionRepository extends JpaRepository<Admission, Long> {
-    /**
-     * Finds all Admission records associated with a specific Student ID.
-     * FIX: Uses findByStudent_Id to correctly target the 'id' field within the 'student' relationship property.
-     */
-    List<Admission> findByStudent_Id(Long studentId);
+    // FIX: Updated to match the studentId field in Student entity
+    List<Admission> findByStudent_StudentId(Long studentId);
 }

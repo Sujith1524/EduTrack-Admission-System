@@ -2,13 +2,16 @@ package com.example.studentadmission.repository;
 
 import com.example.studentadmission.entity.Student;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 
+@Repository
 public interface StudentRepository extends JpaRepository<Student, Long> {
-    Optional<Student> findByEmail(String email);
 
-    // New method to find students by role (used for checking if SUPER_ADMIN exists)
+    // FIX: Changed back to findByStudentEmail to match the latest Student Entity field
+    Optional<Student> findByStudentEmail(String email);
+
     List<Student> findByRole(Student.Role role);
 }

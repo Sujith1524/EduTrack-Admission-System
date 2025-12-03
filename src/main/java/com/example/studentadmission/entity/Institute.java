@@ -10,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import java.time.LocalDateTime;
 
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
         "_class", "instituteId", "instituteName", "instituteEmail",
         "institutePhone", "instituteAddress", "createdAt", "updatedAt"
 })
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Institute {
 
     @Id

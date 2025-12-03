@@ -1,21 +1,37 @@
 package com.example.studentadmission.dto;
 
 import com.example.studentadmission.entity.Admission;
+import com.example.studentadmission.entity.Course;
+import com.example.studentadmission.entity.Institute;
 import com.example.studentadmission.entity.Student;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.Data;
 import java.time.LocalDate;
 
 @Data
+@JsonPropertyOrder({
+        "_class", "admissionId", "studentId", "studentName", "studentPhone",
+        "institute", "course", "admissionDate", "completionDate"
+})
 public class AdmissionResponse {
 
+    @JsonProperty("_class")
+    public String get_class() {
+        return this.getClass().getName();
+    }
+
     private Long admissionId;
+
+    // Keeping student details to match the specific JSON output structure provided by the user
     private Long studentId;
-    private String studentName; // Assuming you want first name here
+    private String studentName;
     private String studentPhone;
-    private Long instituteId;
-    private String instituteName;
-    private Long courseId;
-    private String courseName;
+
+    // FIX: Using full Institute and Course entities to show all details and their _class property
+    private Institute institute;
+    private Course course;
+
     private LocalDate admissionDate;
     private LocalDate completionDate;
 
@@ -25,18 +41,13 @@ public class AdmissionResponse {
 
         dto.setAdmissionId(admission.getAdmissionId());
 
-        // --- FIX: Using getId() instead of getStudentId() ---
-        dto.setStudentId(student.getId());
-
-        // --- FIX: Using getFirstName() and getPhoneNumber() ---
-        dto.setStudentName(student.getFirstName() + " " + student.getLastName());
+        dto.setStudentId(student.getStudentId());
+        dto.setStudentName(student.getStudentName());
         dto.setStudentPhone(student.getPhoneNumber());
 
-        dto.setInstituteId(admission.getInstitute().getInstituteId());
-        dto.setInstituteName(admission.getInstitute().getInstituteName());
-
-        dto.setCourseId(admission.getCourse().getCourseId());
-        dto.setCourseName(admission.getCourse().getCourseName());
+        // FIX: Set the full entities which will trigger their serialization
+        dto.setInstitute(admission.getInstitute());
+        dto.setCourse(admission.getCourse());
 
         dto.setAdmissionDate(admission.getAdmissionDate());
         dto.setCompletionDate(admission.getCompletionDate());

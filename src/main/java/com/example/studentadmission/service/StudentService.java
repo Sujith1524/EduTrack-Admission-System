@@ -9,7 +9,8 @@ import com.example.studentadmission.util.TokenUtility;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // Import added
+import org.springframework.transaction.annotation.Transactional;
+import org.hibernate.Hibernate; // Keeping import, but logic is removed.
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -25,25 +26,20 @@ public class StudentService {
     @Autowired
     private ClassInfoRepository classInfoRepository;
 
-    /**
-     * FIX: Added @Transactional to ensure database operations succeed.
-     * FIX: Added required Address and ClassInfo fields for Super Admin to pass validation.
-     */
     @PostConstruct
     @Transactional
     public void setupSuperAdmin() {
         if (studentRepository.findByRole(Student.Role.SUPER_ADMIN).isEmpty()) {
 
-            // 1. Create Dummy ClassInfo (Required)
             ClassInfo adminClass = new ClassInfo();
             adminClass.setClassId("ADMIN");
             adminClass.setClassName("Administration");
             adminClass.setSection("NA");
             adminClass.setAcademicYear("2000-2001");
-            // The ClassInfo entity will be saved automatically via cascade,
-            // but we ensure we have the object ready.
 
-            // 2. Create Dummy Address (Required)
+            // Explicitly save the dependent ClassInfo object first.
+            ClassInfo persistedAdminClass = classInfoRepository.save(adminClass);
+
             Address adminAddress = new Address();
             adminAddress.setHouseName("System House");
             adminAddress.setStreet("NA");
@@ -52,22 +48,21 @@ public class StudentService {
             adminAddress.setState("System");
             adminAddress.setPinCode("000000");
 
-            // 3. Create Super Admin Student
             Student superAdmin = new Student();
+
+            superAdmin.setStudentName("System Admin");
             superAdmin.setFirstName("System");
-            superAdmin.setLastName("Admin"); // Added last name
-            superAdmin.setEmail("admin@super.com");
+            superAdmin.setLastName("Admin");
+            superAdmin.setStudentEmail("admin@super.com");
             superAdmin.setPassword("SuperAdminPass123");
             superAdmin.setPhoneNumber("0000000000");
             superAdmin.setRole(Student.Role.SUPER_ADMIN);
-            superAdmin.setDateOfBirth(LocalDate.of(1980, 1, 1)); // Realistic DOB
-            superAdmin.setGender(Student.Gender.Other); // Set a default gender
+            superAdmin.setDateOfBirth(LocalDate.of(1980, 1, 1));
+            superAdmin.setGender(Student.Gender.Other);
 
-            // 4. Set required relationships
             superAdmin.setAddress(adminAddress);
-            superAdmin.setClassInfo(adminClass);
+            superAdmin.setClassInfo(persistedAdminClass);
 
-            // 5. Save
             studentRepository.save(superAdmin);
             System.out.println(">>> Super Admin account created successfully <<<");
         }
@@ -75,25 +70,29 @@ public class StudentService {
 
     @Transactional
     public Student registerStudent(Student student) {
-        // 1. Check Email
-        if (studentRepository.findByEmail(student.getEmail()).isPresent()) {
+        if (studentRepository.findByStudentEmail(student.getStudentEmail()).isPresent()) {
             throw new RuntimeException("Email already registered.");
         }
 
-        // 2. Handle Class Info Logic: Check if class exists, otherwise use/save the new one.
         String incomingClassId = student.getClassInfo().getClassId();
         Optional<ClassInfo> existingClass = classInfoRepository.findById(incomingClassId);
 
         if (existingClass.isPresent()) {
+            // Case 1: Class exists. Link the student to the managed instance.
             student.setClassInfo(existingClass.get());
-        } // If not present, the new ClassInfo instance will be saved via CascadeType.PERSIST
+        } else {
+            // Case 2: Class does NOT exist (it is a transient object from the request).
+            // We must explicitly save it before saving the Student.
+            ClassInfo newClass = classInfoRepository.save(student.getClassInfo());
+            student.setClassInfo(newClass);
+        }
 
-        // 3. Save Student (Address saves automatically due to CascadeType.ALL)
         return studentRepository.save(student);
     }
 
+    @Transactional
     public Map<String, Object> loginStudent(String email, String password) {
-        Student student = studentRepository.findByEmail(email)
+        Student student = studentRepository.findByStudentEmail(email)
                 .orElseThrow(() -> new RuntimeException("Login failed: Invalid email or password."));
 
         if (!student.getPassword().equals(password)) {
@@ -103,6 +102,8 @@ public class StudentService {
         if (student.getStatus() == Student.Status.INACTIVE) {
             throw new RuntimeException("Login failed: Account is Inactive.");
         }
+
+        // REMOVED: Hibernate.initialize() calls because EAGER fetching is now used in the entity.
 
         String accessToken = TokenUtility.generateAccessToken(student);
         String refreshToken = TokenUtility.generateRefreshToken(student);
@@ -115,7 +116,6 @@ public class StudentService {
         return data;
     }
 
-    // Refresh Token Logic remains the same...
     public Map<String, String> refreshToken(String refreshToken) {
         if (refreshToken == null || !TokenUtility.validateToken(refreshToken)) {
             throw new RuntimeException("Invalid Refresh Token.");
@@ -125,7 +125,6 @@ public class StudentService {
         }
 
         Map<String, Object> claims = TokenUtility.getClaims(refreshToken);
-        // Note: JWT claims store numbers as Integer/Double/Long, cast carefully
         Long studentId = ((Number) claims.get("id")).longValue();
         Student student = getStudentDetails(studentId);
 
@@ -133,8 +132,13 @@ public class StudentService {
         return Map.of("accessToken", newAccessToken);
     }
 
+    @Transactional(readOnly = true)
     public Student getStudentDetails(Long studentId) {
-        return studentRepository.findById(studentId)
+        Student student = studentRepository.findById(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        // REMOVED: Hibernate.initialize() calls because EAGER fetching is now used in the entity.
+
+        return student;
     }
 }

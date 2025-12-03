@@ -60,6 +60,7 @@ public class InstituteService {
         return instituteRepository.findAll();
     }
 
+    // FIX: Add this method to allow CourseController to fetch institute details
     public Institute getInstituteById(Long instituteId) {
         return instituteRepository.findById(instituteId)
                 .orElseThrow(() -> new RuntimeException("Institute not found with ID: " + instituteId));

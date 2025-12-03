@@ -33,12 +33,12 @@ public class TokenUtility {
         Map<String, Object> claims = new HashMap<>();
 
         // --- FIX: Using getId() instead of getStudentId() ---
-        claims.put("id", student.getId());
+        claims.put("id", student.getStudentId());
         claims.put("role", student.getRole().name());
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(student.getEmail())
+                .setSubject(student.getStudentEmail())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expirationTime))
                 .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
