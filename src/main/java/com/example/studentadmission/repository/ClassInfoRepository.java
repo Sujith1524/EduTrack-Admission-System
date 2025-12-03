@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ClassInfoRepository extends JpaRepository<ClassInfo, String> {
-    // Looks up by the manually assigned String ID (e.g., "C105")
+    // Looks up by the manually assigned String ID (e.g., C105)
 }

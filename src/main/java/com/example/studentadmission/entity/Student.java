@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
         "_class", "studentId", "studentName", "studentEmail", "role",
         "createdAt", "updatedAt"
 })
-// FIX 1: Ignore internal Hibernate proxy fields to prevent serialization errors
+// Ignore internal Hibernate proxy fields to prevent serialization errors
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Student {
 
