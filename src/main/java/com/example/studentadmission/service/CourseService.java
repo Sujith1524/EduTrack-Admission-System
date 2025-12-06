@@ -87,4 +87,9 @@ public class CourseService {
         }
         courseRepository.deleteById(courseId);
     }
+
+    public List<Course> getAllCourseList() {
+        return courseRepository.findAll();
+    }
+
 }

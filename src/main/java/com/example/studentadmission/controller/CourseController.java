@@ -127,4 +127,9 @@ public class CourseController {
         courseService.deleteCourse(id);
         return ResponseUtil.success(null, "Course deleted successfully", HttpStatus.OK);
     }
+
+    @GetMapping("/list")
+    public List<Course> listCourses() {
+        return courseService.getAllCourseList();
+    }
 }
